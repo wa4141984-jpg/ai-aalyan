@@ -10,7 +10,9 @@ from google import genai
 from google.genai import types
 from pypdf import PdfReader
 
-MODEL_NAME = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+# Primary model first; if it returns 404 (retired / not available), the next one is tried.
+MODEL_CANDIDATES = [m for m in [os.getenv("GEMINI_MODEL"), "gemini-3.8-flash",
+                                "gemini-3.7-flash", "gemini-3.6-flash"] if m]
 MAX_CHARS = 20000  # keep prompts small and fast
 
 PROMPT = """You are an expert ATS (Applicant Tracking System) analyst and resume coach.
@@ -90,13 +92,21 @@ def analyze_resume(client, resume_text: str, job_desc: str = "") -> dict:
     jd_clause = " against the job description provided" if job_desc.strip() else ""
     jd_block = f'JOB DESCRIPTION:\n"""\n{job_desc[:MAX_CHARS]}\n"""\n\n' if job_desc.strip() else ""
     prompt = PROMPT.format(jd_clause=jd_clause, jd_block=jd_block, resume=resume_text[:MAX_CHARS])
-    response = client.models.generate_content(
-        model=MODEL_NAME,
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            response_mime_type="application/json", temperature=0.2
-        ),
-    )
+    response, last_err = None, None
+    for model in MODEL_CANDIDATES:
+        try:
+            response = client.models.generate_content(
+                model=model,
+                contents=prompt,
+                config=types.GenerateContentConfig(response_mime_type="application/json"),
+            )
+            break
+        except Exception as e:  # only fall back when the model itself is unavailable
+            last_err = e
+            if "404" not in str(e) and "NOT_FOUND" not in str(e):
+                raise
+    if response is None:
+        raise last_err
     result = parse_json(response.text)
     result["ats_score"] = clamp(result.get("ats_score"))
     result["breakdown"] = {k: clamp(v) for k, v in (result.get("breakdown") or {}).items()}

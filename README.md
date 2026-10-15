@@ -26,7 +26,7 @@ Get a free API key at https://aistudio.google.com, then either:
 streamlit run app.py
 ```
 
-Optional: change the model with `GEMINI_MODEL` (default `gemini-2.5-flash`).
+Optional: change the model with `GEMINI_MODEL` (default `gemini-3.8-flash`, with automatic fallback to 3.7 and 3.6 Flash).
 
 ## Deploy on Streamlit Community Cloud
 1. Push this repo to GitHub (never commit your API key).
@@ -37,4 +37,4 @@ Optional: change the model with `GEMINI_MODEL` (default `gemini-2.5-flash`).
 
 ## Notes
 - Scanned/image-only PDFs can't be read; use a text-based PDF.
-- The score is an AI estimate, not the output of a real ATS.# ai-aalyan
+- The score is an AI estimate, not the output of a real ATS.
